@@ -1,0 +1,20 @@
+{
+  "sensors": {
+    "temperature": 23.1,
+    "humidity": 35.2,
+    "pressure": 1013.25,
+    "air_quality": 42,
+    "light_level": 780
+  },
+  "status": {
+    "system": "online",
+    "battery": 87.5,
+    "uptime_seconds": 12345,
+    "wifi_strength": -65
+  },
+  "location": {
+    "latitude": 37.7749,
+    "longitude": -122.4194,
+    "altitude": 16.0
+  }
+}

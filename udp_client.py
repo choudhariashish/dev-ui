@@ -1,6 +1,7 @@
 import socket
 import json
 import time
+import random
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
@@ -14,120 +15,42 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle requests in a separate thread."""
 
 class WebHandler(BaseHTTPRequestHandler):
+    def modify_floating_values(self, data):
+        """Recursively modify floating point values in the data structure."""
+        if isinstance(data, dict):
+            return {k: self.modify_floating_values(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self.modify_floating_values(item) for item in data]
+        elif isinstance(data, float):
+            # Add a random value between -1 and 1 to the float
+            return round(data + random.uniform(-1.0, 1.0), 2)
+        return data
+
     def do_GET(self):
         if self.path == '/':
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            
-            # Simple HTML page with auto-refresh
-            html = """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>UDP Data Viewer</title>
-                <style>
-                    body { 
-                        font-family: Arial, sans-serif; 
-                        max-width: 1200px; 
-                        margin: 0 auto; 
-                        padding: 20px;
-                        background-color: #f5f5f5;
-                    }
-                    .container {
-                        background: white;
-                        padding: 20px;
-                        border-radius: 8px;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    }
-                    pre {
-                        background: #f8f9fa;
-                        padding: 15px;
-                        border-radius: 4px;
-                        overflow-x: auto;
-                        white-space: pre-wrap;
-                        word-wrap: break-word;
-                    }
-                    .header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        margin-bottom: 20px;
-                    }
-                    .last-updated {
-                        color: #666;
-                        font-size: 0.9em;
-                    }
-                </style>
-                <meta http-equiv="refresh" content="1">
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>UDP Data Viewer</h1>
-                        <div class="last-updated" id="last-updated">Last updated: Never</div>
-                    </div>
-                    <pre id="json-data">Loading data...</pre>
-                </div>
-                <script>
-                    // Format JSON with syntax highlighting
-                    function syntaxHighlight(json) {
-                        if (typeof json != 'string') {
-                            json = JSON.stringify(json, undefined, 2);
-                        }
-                        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                        return json.replace(
-                            /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
-                            function (match) {
-                                let cls = 'number';
-                                if (/^"/.test(match)) {
-                                    if (/:$/.test(match)) {
-                                        cls = 'key';
-                                    } else {
-                                        cls = 'string';
-                                    }
-                                } else if (/true|false/.test(match)) {
-                                    cls = 'boolean';
-                                } else if (/null/.test(match)) {
-                                    cls = 'null';
-                                }
-                                return '<span class="' + cls + '">' + match + '</span>';
-                            }
-                        );
-                    }
-
-                    // Update the display with new data
-                    function updateData() {
-                        fetch('/data')
-                            .then(response => response.json())
-                            .then(data => {
-                                document.getElementById('json-data').innerHTML = syntaxHighlight(data);
-                                document.getElementById('last-updated').textContent = 
-                                    'Last updated: ' + new Date().toLocaleTimeString();
-                            })
-                            .catch(error => {
-                                console.error('Error fetching data:', error);
-                            });
-                    }
-
-                    // Initial load
-                    updateData();
-                    
-                    // Update every second
-                    setInterval(updateData, 1000);
-                </script>
-            </body>
-            </html>
-            """
-            self.wfile.write(html.encode('utf-8'))
-            
+            try:
+                with open('index.html', 'rb') as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                self.wfile.write(content)
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(f'Error loading index.html: {str(e)}'.encode('utf-8'))
         elif self.path == '/data':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             with data_lock:
-                self.wfile.write(json.dumps(latest_data, indent=2).encode('utf-8'))
+                # Create a deep copy of the data to avoid modifying the original
+                import copy
+                data_to_send = copy.deepcopy(latest_data)
+                # Modify floating point values
+                modified_data = self.modify_floating_values(data_to_send)
+                self.wfile.write(json.dumps(modified_data, indent=2).encode('utf-8'))
         else:
             self.send_response(404)
             self.end_headers()

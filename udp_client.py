@@ -2,6 +2,7 @@ import socket
 import json
 import time
 import random
+import argparse
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
@@ -65,13 +66,30 @@ def run_web_server(port=8000):
 def main():
     global latest_data
     
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='UDP Client for receiving data from server')
+    parser.add_argument('--ip', '--server-ip', dest='server_ip', 
+                        default='127.0.0.1', 
+                        help='UDP server IP address (default: 127.0.0.1)')
+    parser.add_argument('--port', '--server-port', dest='server_port', 
+                        type=int, default=5005, 
+                        help='UDP server port (default: 5005)')
+    parser.add_argument('--web-port', dest='web_port', 
+                        type=int, default=8000, 
+                        help='Web server port (default: 8000)')
+    args = parser.parse_args()
+    
     # Server configuration
-    SERVER_IP = '127.0.0.1'
-    SERVER_PORT = 5005
+    SERVER_IP = args.server_ip
+    SERVER_PORT = args.server_port
     BUFFER_SIZE = 4096
 
+    print(f"Configuration:")
+    print(f"  UDP Server: {SERVER_IP}:{SERVER_PORT}")
+    print(f"  Web Server: http://localhost:{args.web_port}")
+
     # Start web server in a separate thread
-    web_thread = threading.Thread(target=run_web_server)
+    web_thread = threading.Thread(target=run_web_server, args=(args.web_port,))
     web_thread.daemon = True
     web_thread.start()
 

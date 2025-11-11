@@ -79,11 +79,21 @@ void update_timestamp(char* json_data, size_t size) {
     }
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_len = sizeof(client_addr);
     char buffer[BUFFER_SIZE];
     int opt = 1;
+    const char* json_filename;
+    
+    // Parse command-line arguments
+    if (argc > 1) {
+        json_filename = argv[1];
+    } else {
+        json_filename = "live-data.json";  // Default filename
+    }
+    
+    printf("Using JSON file: %s\n", json_filename);
     
     // Initialize clients
     for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -122,9 +132,9 @@ int main() {
     signal(SIGINT, handle_signal);
 
     // Load JSON data
-    char* json_data = load_json_data("live-data.json");
+    char* json_data = load_json_data(json_filename);
     if (!json_data) {
-        fprintf(stderr, "Failed to load JSON data\n");
+        fprintf(stderr, "Failed to load JSON data from %s\n", json_filename);
         close(server_socket);
         return 1;
     }
@@ -132,9 +142,9 @@ int main() {
     // Main server loop
     while (running) {
 
-        json_data = load_json_data("live-data.json");
+        json_data = load_json_data(json_filename);
         if (!json_data) {
-            fprintf(stderr, "Failed to load JSON data\n");
+            fprintf(stderr, "Failed to load JSON data from %s\n", json_filename);
             close(server_socket);
             return 1;
         }
